@@ -1,0 +1,247 @@
+group members: Daniel Veretenov, Mahek Aggarwal, Vivian Li
+class: DS 4300
+date: 02/20/2024
+
+
+Q1: Find the number of restaurants in each borough that have a grade 'A'
+query:
+db.collection.aggregate([
+    {"$unwind": "$grades"},
+    {"$match": {
+        "grades.grade": "A",
+        "borough": {"$ne": "Missing"} 
+    }},
+    {"$group": {"_id": "$borough", "count": {"$sum": 1}}},
+    {"$sort": {"count": -1}},
+    { $limit: 10 }
+]);
+
+output:
+[
+  { _id: 'Manhattan', count: 31175 },
+  { _id: 'Brooklyn', count: 17324 },
+  { _id: 'Queens', count: 16422 },
+  { _id: 'Bronx', count: 7022 },
+  { _id: 'Staten Island', count: 2638 }
+]
+
+
+Q2: Print the location of the top 5 restaurants in the database
+query:
+db.collection.aggregate([
+    { $unwind: "$grades" },
+    { $group: {
+        _id: {
+            name: "$name",
+            location: "$address.coord"
+        },
+        averageScore: { $avg: "$grades.score" }
+    }},
+    { $sort: { averageScore: -1 } },
+    { $limit: 5 }
+]);
+
+output:
+[
+  {_id: {name: 'Juice It Health Bar', location: [ -73.958167, 40.681357 ]}, averageScore: 75},
+  {_id: {name: 'Golden Dragon Cuisine', location: [ -73.852077, 40.8339379 ]}, averageScore: 73},
+  {_id: {name: 'Palombo Pastry Shop', location: [ -73.887492, 40.8556246 ]}, averageScore: 69},
+  {_id: {name: "Chelsea'S Juice Factory", location: [ -73.9854939, 40.6410624 ]}, averageScore: 69},
+  {_id: { name: 'Go Go Curry', location: [ -74.0091249, 40.7098261 ] }, averageScore: 65}
+]
+
+Q3: Count restaurants that have received at least one 'A' grade and at least one 'B' grade (limit 10)
+query:
+db.collection.countDocuments({
+    "grades.grade": { $in: ["A", "B", "C"] }
+});
+
+output:
+23931
+
+Q4: Find all the Japanese restaurants in Queens that have a grade B
+db.restaurant.find(
+    {
+        "borough": "Queens",
+        "cuisine": "Japanese",
+        "grades.grade": "B"
+    },
+    {
+        "_id": 0,
+        "name": 1,
+        "address": 1,
+        "grades.$": 1
+    }
+).limit(10);
+
+output:
+[
+  {address: {building: '107-08', coord: [ -73.8454959, 40.7207511 ], street: '70 Road', zipcode: '11375'},
+    grades: [{date: ISODate('2011-09-15T00:00:00.000Z'),grade: 'B',score: 27}],
+    name: 'Narita Japanese Restaurant'},
+  {address: {building: '252-01', coord: [ -73.73647799999999, 40.769905 ], street: 'Northern Boulevard', zipcode: '11362'},
+    grades: [{date: ISODate('2011-12-07T00:00:00.000Z'), grade: 'B', score: 14}],
+    name: 'Sushi Family'},
+  {address: {building: '0', coord: [ -73.7822056, 40.6434612 ], street: 'Jfk International Airport', zipcode: '11430'},
+    grades: [{date: ISODate('2014-09-02T00:00:00.000Z'), grade: 'B', score: 22}],
+    name: 'Japan Airlines Lounge'},
+  {address: {building: '70-18', coord: [ -73.8923056, 40.7275114 ], street: 'Grand Avenue', zipcode: '11378'},
+    grades: [{date: ISODate('2011-09-27T00:00:00.000Z'), grade: 'B', score: 23}],
+    name: 'Wakamatsu Japanese Restaurant'},
+  {address: {building: "JFK INT'L", coord: [ -73.77813909999999, 40.6413111 ], street: 'Airport', zipcode: '11430'},
+    grades: [{date: ISODate('2013-02-14T00:00:00.000Z'), grade: 'B', score: 17}],
+    name: 'Jikji Cafe'},
+  {address: {building: '39-28', coord: [ -73.771751, 40.76446900000001 ], street: 'Bell Boulevard', zipcode: '11361'},
+    grades: [{date: ISODate('2012-01-19T00:00:00.000Z'), grade: 'B', score: 16}],
+    name: 'Okinawa'},
+  {address: {building: '11116', coord: [ -73.83173699999999, 40.7150181 ], street: 'Queens Boulevard', zipcode: '11375'},
+    grades: [{date: ISODate('2014-06-27T00:00:00.000Z'), grade: 'B', score: 25}],
+    name: 'Midori Matsu'},
+  {address: {building: '263', coord: [ -73.83825, 40.580973 ], street: 'Beach 116 Street', zipcode: '11694'},
+    grades: [{date: ISODate('2013-09-24T00:00:00.000Z'), grade: 'B', score: 14}],
+    name: "O'Sake Japanese Restaurant"},
+  {address: {building: '90-15', coord: [ -73.8706606, 40.7342757 ], street: 'Queens Boulevard', zipcode: '11373'},
+    grades: [{date: ISODate('2014-01-23T00:00:00.000Z'), grade: 'B', score: 26}],
+    name: 'Sarku Japan'},
+  {address: {building: '3250', coord: [ -73.7910626, 40.7675863 ], street: 'Francis Lewis Boulevard', zipcode: '11358'},
+    grades: [{date: ISODate('2012-01-14T00:00:00.000Z'), grade: 'B', score: 19}],
+    name: 'Sushi Village'}
+]
+  
+Q5: Count the number of restaurants in American, Mexican, Russian, Korean, and Indian cuisines category in Brooklyn with an average grade B
+query: 
+db.collection.aggregate([
+    {"$match": { "borough": "Brooklyn" } },
+    { "$unwind": "$grades" },
+    { "$match": { "cuisine": { "$in": ["American", "Mexican", "Russian", "Korean", "Indian"] }, "grades.grade": "B" } },
+    { "$group": {
+        "_id": "$cuisine",
+        "averageGrade": { "$avg": "$grades.score" },
+        "count": { "$sum": 1 }
+    }}
+]);
+
+output:
+[
+  { _id: 'Indian', averageGrade: 20.5, count: 42 },
+  { _id: 'American', averageGrade: 19.49298245614035, count: 570 },
+  { _id: 'Russian', averageGrade: 20.975609756097562, count: 41 },
+  { _id: 'Korean', averageGrade: 19, count: 5 },
+  { _id: 'Mexican', averageGrade: 20.238095238095237, count: 168 }
+]
+
+
+Q6: Find restaurants that have improved their score by at least 10 points
+query:
+db.collection.aggregate([
+    {"$addFields": {
+        "firstGradeScore": {"$arrayElemAt": ["$grades.score", -1]},
+        "lastGradeScore": {"$arrayElemAt": ["$grades.score", 0]},
+    }},
+    {"$addFields": {
+        "scoreImprovement": {"$subtract": ["$lastGradeScore", "$firstGradeScore"]}
+    }},
+    {"$match": {"scoreImprovement": {"$gte": 10}}},
+    {"$group": {
+        "_id": {
+            "name": "$name",
+            "scoreImprovement": "$scoreImprovement"
+        }}},
+    {"$limit": 10},
+    {"$sort": {"_id.scoreImprovement": -1}}
+])
+
+output:
+[
+  { _id: { name: 'Gordon Bennett', scoreImprovement: 30 } },
+  { _id: { name: 'Fusha', scoreImprovement: 26 } },
+  { _id: { name: 'Energy Fuel', scoreImprovement: 24 } },
+  { _id: { name: "Marty O'Brien'S", scoreImprovement: 14 } },
+  { _id: { name: "Lili'S 57", scoreImprovement: 13 } },
+  { _id: { name: 'Dominican Restaurant', scoreImprovement: 12 } },
+  { _id: { name: "Pizza Pete'S", scoreImprovement: 12 } },
+  { _id: { name: 'Mama Rosaria Pizzeria', scoreImprovement: 11 } },
+  {_id: { name: 'Cibo Express Gourmet Market', scoreImprovement: 11 } },
+  { _id: { name: 'Feng Shui Chinese Cuisine', scoreImprovement: 10 } }
+]
+
+
+Question 7: Count the number of restaurants in each cuisine category (limit 10)
+db.collection.aggregate([
+    {"$group": {"_id": "$cuisine", "count": {"$sum": 1}}},
+    {"$limit": 10}, {"$sort": {"count": -1}}
+])
+
+output:
+[
+  { _id: 'American', count: 6183 },
+  { _id: 'Spanish', count: 637 },
+  { _id: 'Donuts', count: 479 },
+  { _id: 'Sandwiches', count: 459 },
+  { _id: 'Ice Cream, Gelato, Yogurt, Ices', count: 348 },
+  { _id: 'French', count: 344 },
+  { _id: 'Tex-Mex', count: 143 },
+  { _id: 'Vietnamese/Cambodian/Malaysia', count: 66 },
+  { _id: 'German', count: 31 },
+  { _id: 'Brazilian', count: 26 }
+]
+
+
+Q8: Find the names of the restaurants that have never received a grade below 'B'
+query:
+db.collection.find({
+    "grades.grade": { $not: { $in: ["C", "D", "F", "Z"] }
+}}, { "name": 1 }).limit(10)
+
+output:
+[
+  {_id: ObjectId('65d4750f69154c9225d97d33'), name: 'Dj Reynolds Pub And Restaurant'},
+  { _id: ObjectId('65d4750f69154c9225d97d34'), name: 'Kosher Island' },
+  {_id: ObjectId('65d4750f69154c9225d97d35'), name: 'Morris Park Bake Shop'},
+  {_id: ObjectId('65d4750f69154c9225d97d38'), name: 'Riviera Caterer'},
+  {_id: ObjectId('65d4750f69154c9225d97d39'), name: 'Regina Caterers'},
+  {_id: ObjectId('65d4750f69154c9225d97d3a'), name: 'Taste The Tropics Ice Cream'},
+  { _id: ObjectId('65d4750f69154c9225d97d3b'), name: 'Wild Asia' },
+  {_id: ObjectId('65d4750f69154c9225d97d3c'), name: 'C & C Catering Service'},
+  {_id: ObjectId('65d4750f69154c9225d97d3d'), name: "Wilken'S Fine Food"},
+  { _id: ObjectId('65d4750f69154c9225d97d3e'), name: "Wendy'S" }
+]
+
+
+
+Q9: Find the restaurant with the most number of grades
+db.collection.aggregate([
+    { $project: { name: 1, numberOfGrades: { $size: "$grades" } } },
+    { $sort: { numberOfGrades: -1 } },
+    { $limit: 1 }
+])
+
+output:
+[
+  {_id: ObjectId('65d4751069154c9225d995d9'), name: "S'Mac", numberOfGrades: 9}
+]
+
+Q10:  Calculate the average grade score for Brooklyn and Queens"
+query:
+db.collection.aggregate([
+    { $match: { borough: { $in: ["Brooklyn", "Queens"] } } },
+    { $unwind: "$grades" },
+    { $group: {
+        _id: "$borough",
+        averageScore: { $avg: "$grades.score" }
+    }}
+])
+
+output:
+[
+  { _id: 'Queens', averageScore: 11.634865110930088 },
+  { _id: 'Brooklyn', averageScore: 11.44797595737899 }
+]
+
+
+
+
+
+
+
+
